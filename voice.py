@@ -73,6 +73,20 @@ class AudioConverter:
             if ext == '.wav':
                 return input_file
             
+            # Check if FFmpeg is available
+            try:
+                from pydub.utils import which
+                if which("ffmpeg") is None and which("avconv") is None:
+                    raise Exception(
+                        "FFmpeg not found! Please install FFmpeg:\n"
+                        "Windows: Download from https://ffmpeg.org/download.html\n"
+                        "Mac: brew install ffmpeg\n"
+                        "Linux: sudo apt-get install ffmpeg\n"
+                        "For Streamlit Cloud: Create packages.txt with 'ffmpeg'"
+                    )
+            except ImportError:
+                pass
+            
             # Generate output path if not provided
             if output_path is None:
                 output_path = os.path.join(
