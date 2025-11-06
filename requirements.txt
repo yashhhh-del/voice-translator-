@@ -1,0 +1,9 @@
+streamlit
+pydub
+SpeechRecognition
+googletrans
+openai-whisper
+pyaudio
+sounddevice
+soundfile
+numpy
