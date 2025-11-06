@@ -253,13 +253,13 @@ class SpeechToText:
 # FILE 3: translator.py - Text Translation
 # =====================================================
 
-from googletrans import Translator, LANGUAGES
+from deep_translator import GoogleTranslator
 
 class TextTranslator:
     """Handles text translation using Google Translate"""
     
     def __init__(self):
-        self.translator = Translator()
+        self.translator = GoogleTranslator()
     
     def translate(self, text, target_language='en', source_language='auto'):
         """
@@ -277,13 +277,12 @@ class TextTranslator:
             if not text or text.strip() == '':
                 return ''
             
-            result = self.translator.translate(
-                text, 
-                dest=target_language,
-                src=source_language
-            )
+            result = GoogleTranslator(
+                source=source_language,
+                target=target_language
+            ).translate(text)
             
-            return result.text
+            return result
             
         except Exception as e:
             raise Exception(f"Translation error: {str(e)}")
@@ -291,10 +290,11 @@ class TextTranslator:
     def detect_language(self, text):
         """Detect language of text"""
         try:
-            detection = self.translator.detect(text)
+            from langdetect import detect
+            lang = detect(text)
             return {
-                'language': detection.lang,
-                'confidence': detection.confidence
+                'language': lang,
+                'confidence': 0.99
             }
         except:
             return None
@@ -320,8 +320,8 @@ class TextTranslator:
             'Portuguese': 'pt',
             'Japanese': 'ja',
             'Korean': 'ko',
-            'Chinese (Simplified)': 'zh-cn',
-            'Chinese (Traditional)': 'zh-tw',
+            'Chinese (Simplified)': 'zh-CN',
+            'Chinese (Traditional)': 'zh-TW',
             'Arabic': 'ar',
             'Russian': 'ru',
             'Turkish': 'tr',
@@ -628,3 +628,240 @@ def process_audio(file_path, stt, translator, converter, source_lang, target_lan
 
 if __name__ == "__main__":
     main()
+
+
+# =====================================================
+# FILE 5: requirements.txt
+# =====================================================
+
+"""
+streamlit
+pydub
+SpeechRecognition
+deep-translator
+openai-whisper
+sounddevice
+soundfile
+numpy
+langdetect
+"""
+
+
+# =====================================================
+# FILE 6: README.md
+# =====================================================
+
+"""
+# 🎙️ Voice Translation Tool
+
+A powerful voice translation tool that converts speech to text and translates it to any language.
+
+## ✨ Features
+
+- 📁 Upload audio/video files (MP3, MP4, WAV, M4A, OGG, FLAC, AAC)
+- 🎤 Record audio directly from microphone
+- 🗣️ Speech-to-text conversion using Google or Whisper
+- 🌍 Translate to 30+ languages
+- 💾 Download results as text files
+- 🎨 Beautiful and intuitive UI
+
+## 🚀 Installation
+
+### 1. Install Python Dependencies
+
+```bash
+pip install streamlit pydub SpeechRecognition googletrans==4.0.0-rc1
+pip install openai-whisper pyaudio sounddevice soundfile numpy
+```
+
+### 2. Install FFmpeg (Required for audio conversion)
+
+**Windows:**
+- Download from: https://ffmpeg.org/download.html
+- Extract and add to PATH
+
+**Mac:**
+```bash
+brew install ffmpeg
+```
+
+**Linux:**
+```bash
+sudo apt-get install ffmpeg
+```
+
+### 3. Install PyAudio (For microphone recording)
+
+**Windows:**
+```bash
+pip install pipwin
+pipwin install pyaudio
+```
+
+**Mac/Linux:**
+```bash
+pip install pyaudio
+```
+
+## 📁 Project Structure
+
+```
+voice_translation_tool/
+│
+├── app.py                 # Main Streamlit application
+├── converter.py           # Audio format conversion module
+├── speech_to_text.py      # Speech recognition module
+├── translator.py          # Text translation module
+├── requirements.txt       # Python dependencies
+├── README.md             # This file
+└── temp/                 # Temporary files (auto-created)
+```
+
+## 🎯 Usage
+
+### Run the Application
+
+```bash
+streamlit run app.py
+```
+
+### Using the Tool
+
+1. **Upload File Tab:**
+   - Upload audio/video file
+   - Select source language
+   - Enable translation (optional)
+   - Select target language
+   - Click "Convert & Translate"
+
+2. **Record Audio Tab:**
+   - Set recording duration
+   - Click "Start Recording"
+   - Speak clearly
+   - Click "Convert & Translate"
+
+3. **Download Results:**
+   - Download original transcription
+   - Download translated text
+
+## 🌍 Supported Languages
+
+### Speech Recognition:
+English, Hindi, Marathi, Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, 
+Punjabi, Spanish, French, German, Italian, Japanese, Korean, Chinese, Arabic, 
+Russian, Portuguese
+
+### Translation:
+30+ languages including all Indian languages, European languages, Asian languages, 
+and more!
+
+## 🔧 Troubleshooting
+
+### FFmpeg Not Found
+- Make sure FFmpeg is installed and added to system PATH
+- Restart terminal/IDE after installation
+
+### PyAudio Installation Error
+- On Windows: Use `pipwin install pyaudio`
+- On Mac: `brew install portaudio` then `pip install pyaudio`
+- On Linux: `sudo apt-get install python3-pyaudio`
+
+### No Audio Detected
+- Check microphone permissions
+- Speak clearly and close to microphone
+- Ensure audio file has clear speech
+
+### Translation Error
+- Check internet connection (required for Google Translate)
+- Try again after a few seconds
+
+## 📊 Technical Details
+
+### Speech Recognition Engines
+
+**Google Speech Recognition (Online):**
+- Fast and accurate
+- Requires internet connection
+- Free tier available
+- Good for real-time applications
+
+**OpenAI Whisper (Offline):**
+- Highly accurate
+- Works offline
+- Slower processing
+- Better for noisy audio
+
+### Audio Processing
+
+- Automatic format conversion to WAV
+- Support for compressed formats
+- Preserves audio quality
+- Handles both audio and video files
+
+## 🎨 UI Features
+
+- Clean and modern interface
+- Real-time processing feedback
+- Progress indicators
+- Audio playback
+- Download buttons
+- Error handling with detailed messages
+
+## 📝 Example Use Cases
+
+1. **Content Creation:**
+   - Transcribe podcast episodes
+   - Generate video subtitles
+   - Create multilingual content
+
+2. **Business:**
+   - Meeting transcriptions
+   - Customer call analysis
+   - International communication
+
+3. **Education:**
+   - Lecture transcriptions
+   - Language learning
+   - Research interviews
+
+4. **Accessibility:**
+   - Voice-to-text for hearing impaired
+   - Text translation for language barriers
+   - Audio documentation
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit pull requests.
+
+## 📄 License
+
+MIT License - Feel free to use for personal and commercial projects.
+
+## 💡 Tips for Best Results
+
+1. **Audio Quality:**
+   - Use clear, noise-free recordings
+   - Speak at normal pace
+   - Avoid background music
+
+2. **Language Selection:**
+   - Choose correct source language
+   - Use specific dialect codes when available
+
+3. **File Size:**
+   - Compress large files before upload
+   - Split very long recordings
+   - Use appropriate audio bitrate
+
+## 🆘 Support
+
+For issues and questions:
+- Check documentation
+- Review error messages
+- Verify all dependencies installed
+- Test with sample audio files
+
+---
+
+**Made with ❤️ using Streamlit, Whisper, and Google APIs**
+"""
