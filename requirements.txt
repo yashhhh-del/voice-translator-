@@ -1,8 +1,9 @@
 streamlit
 pydub
 SpeechRecognition
-googletrans==4.0.0-rc1
+deep-translator
 openai-whisper
 sounddevice
 soundfile
 numpy
+langdetect
