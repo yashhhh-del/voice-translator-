@@ -147,14 +147,16 @@ import os
 class SpeechToText:
     """Handles speech-to-text conversion using multiple engines"""
     
-    def __init__(self, engine='google'):
+    def __init__(self, engine='google', model_size='small'):
         """
         Initialize speech recognition
         
         Args:
             engine: 'google' (online) or 'whisper' (offline)
+            model_size: Whisper model size (tiny, base, small, medium, large)
         """
         self.engine = engine
+        self.model_size = model_size
         self.recognizer = sr.Recognizer()
     
     def transcribe_google(self, audio_file, language='en-US'):
@@ -174,16 +176,22 @@ class SpeechToText:
         while retry_count < max_retries:
             try:
                 with sr.AudioFile(audio_file) as source:
-                    # Adjust for ambient noise
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    # Better noise reduction
+                    self.recognizer.adjust_for_ambient_noise(source, duration=1.0)
+                    
+                    # Adjust recognition sensitivity
+                    self.recognizer.energy_threshold = 300
+                    self.recognizer.dynamic_energy_threshold = True
+                    self.recognizer.pause_threshold = 0.8
                     
                     # Record audio
                     audio_data = self.recognizer.record(source)
                     
-                    # Recognize speech with timeout
+                    # Recognize speech with show_all for better alternatives
                     text = self.recognizer.recognize_google(
                         audio_data, 
-                        language=language
+                        language=language,
+                        show_all=False  # Set to True to see alternatives
                     )
                     
                     return text
@@ -220,14 +228,29 @@ class SpeechToText:
         try:
             import whisper
             
-            # Load Whisper model (base by default)
-            model = whisper.load_model("base")
+            # Load better Whisper model for accuracy
+            # Options: tiny, base, small, medium, large
+            # Larger = More accurate but slower
+            model_size = self.model_size if hasattr(self, 'model_size') else "small"
             
-            # Transcribe
+            model = whisper.load_model(model_size)
+            
+            # Transcribe with better parameters
+            transcribe_options = {
+                "fp16": False,  # Better for CPU
+                "language": language,
+                "task": "transcribe",
+                "best_of": 5,  # Try 5 different decodings
+                "beam_size": 5,  # Beam search for better accuracy
+                "temperature": 0.0,  # Deterministic output
+            }
+            
             if language:
-                result = model.transcribe(audio_file, language=language)
+                result = model.transcribe(audio_file, **transcribe_options)
             else:
-                result = model.transcribe(audio_file)
+                # Auto-detect language
+                transcribe_options.pop("language")
+                result = model.transcribe(audio_file, **transcribe_options)
             
             return result['text'].strip()
             
@@ -468,7 +491,8 @@ def main():
         engine_code = 'whisper' if 'Whisper' in engine else 'google'
         
         # Source language
-        stt = SpeechToText(engine=engine_code)
+        stt_model_size = st.session_state.get('whisper_model', 'small')
+        stt = SpeechToText(engine=engine_code, model_size=stt_model_size)
         source_langs = stt.get_supported_languages()
         source_lang_name = st.selectbox(
             "Source Language (Audio)",
