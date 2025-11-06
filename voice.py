@@ -38,6 +38,11 @@ pip install numpy
 import os
 from pydub import AudioSegment
 import tempfile
+import sys
+
+# Set FFmpeg path if needed (uncomment and adjust path)
+# AudioSegment.converter = "C:\\ffmpeg\\bin\\ffmpeg.exe"  # Windows
+# AudioSegment.ffprobe = "C:\\ffmpeg\\bin\\ffprobe.exe"   # Windows
 
 class AudioConverter:
     """Handles audio/video format conversion to WAV"""
@@ -163,28 +168,43 @@ class SpeechToText:
         Returns:
             Transcribed text
         """
-        try:
-            with sr.AudioFile(audio_file) as source:
-                # Adjust for ambient noise
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                
-                # Record audio
-                audio_data = self.recognizer.record(source)
-                
-                # Recognize speech
-                text = self.recognizer.recognize_google(
-                    audio_data, 
-                    language=language
-                )
-                
-                return text
-                
-        except sr.UnknownValueError:
-            raise Exception("Could not understand audio. Please speak clearly.")
-        except sr.RequestError as e:
-            raise Exception(f"Google API error: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Transcription error: {str(e)}")
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with sr.AudioFile(audio_file) as source:
+                    # Adjust for ambient noise
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    
+                    # Record audio
+                    audio_data = self.recognizer.record(source)
+                    
+                    # Recognize speech with timeout
+                    text = self.recognizer.recognize_google(
+                        audio_data, 
+                        language=language
+                    )
+                    
+                    return text
+                    
+            except sr.UnknownValueError:
+                raise Exception("Could not understand audio. Please speak clearly.")
+            except sr.RequestError as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    raise Exception(
+                        f"Google API error after {max_retries} attempts. "
+                        "Please try:\n"
+                        "1. Switch to Whisper (Offline) engine\n"
+                        "2. Check your internet connection\n"
+                        "3. Wait a few minutes and try again\n"
+                        f"Error details: {str(e)}"
+                    )
+                import time
+                time.sleep(2)  # Wait before retry
+            except Exception as e:
+                raise Exception(f"Transcription error: {str(e)}")
     
     def transcribe_whisper(self, audio_file, language=None):
         """
@@ -442,10 +462,10 @@ def main():
         # Engine selection
         engine = st.selectbox(
             "Speech Recognition Engine",
-            ['Google (Online)', 'Whisper (Offline)'],
-            help="Google: Fast, online. Whisper: Accurate, works offline."
+            ['Whisper (Offline - Recommended)', 'Google (Online)'],
+            help="Whisper: Accurate, works offline. Google: Fast but needs internet."
         )
-        engine_code = 'google' if 'Google' in engine else 'whisper'
+        engine_code = 'whisper' if 'Whisper' in engine else 'google'
         
         # Source language
         stt = SpeechToText(engine=engine_code)
@@ -571,9 +591,21 @@ def process_audio(file_path, stt, translator, converter, source_lang, target_lan
             if audio_info:
                 st.success(f"✅ Converted | Duration: {audio_info['duration']:.1f}s")
             
-            # Step 2: Speech to Text
+            # Step 2: Speech to Text with fallback
             st.info(f"🎯 Step 2: Converting speech to text ({source_lang_name})...")
-            transcribed_text = stt.transcribe(wav_path, source_lang)
+            
+            try:
+                transcribed_text = stt.transcribe(wav_path, source_lang)
+            except Exception as e:
+                error_msg = str(e)
+                if "Google API" in error_msg or "Broken pipe" in error_msg or "connection" in error_msg.lower():
+                    st.warning("⚠️ Google API failed. Switching to Whisper (offline)...")
+                    # Fallback to Whisper
+                    whisper_stt = SpeechToText(engine='whisper')
+                    whisper_lang = source_lang.split('-')[0] if '-' in source_lang else source_lang
+                    transcribed_text = whisper_stt.transcribe(wav_path, whisper_lang)
+                else:
+                    raise e
             
             if not transcribed_text or transcribed_text.strip() == '':
                 st.error("❌ No speech detected in audio. Please try again with clear audio.")
